@@ -1,9 +1,9 @@
 // ─── CONFIGURATION ────────────────────────────────────────────────────────────
 // Replace these three values before deploying. Never commit real keys to git.
 // See README.md → Step 3 for where to find them in Supabase.
-const SUPABASE_URL  = 'https://YOUR_PROJECT_ID.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';
-const ADMIN_EMAIL   = 'your@email.com'; // must match your Supabase sign-up email
+const SUPABASE_URL = 'https://yqaewmummqfbyjmmjiyo.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_4ORRgVlmJwj8hXXubOXXBg_qpuL3P8i';
+const ADMIN_EMAIL   = 'homitkiandrei@gmail.com'; // must match your Supabase sign-up email
 // ──────────────────────────────────────────────────────────────────────────────
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
