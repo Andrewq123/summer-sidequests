@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suggest a Quest — Sidequests</title>
+<link rel="icon" href="icon.ico">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+</head>
+<body>
+<div id="toast"></div>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="index.html">Side<em>quests</em></a>
+    <div class="nav-links">
+      <a class="nav-link" href="index.html">List</a>
+      <a class="nav-link active" href="submit.html">Suggest</a>
+      <a class="nav-link" href="admin.html" id="nav-admin" style="display:none">Admin ⚙</a>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+</nav>
+
+<div class="page-sm fade-up">
+  <p class="page-eyebrow">Community</p>
+  <h1 class="page-title">Suggest a<br><em>Sidequest</em></h1>
+  <p style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:2rem">Got a wild idea for the group? Submit it below. Andrei reviews every suggestion — if it's good enough, it joins the list.</p>
+
+  <div class="card-surface" id="the-form">
+    <div class="form-group">
+      <label class="form-label">Quest name (English) *</label>
+      <input class="form-input" type="text" id="name-en" placeholder="e.g. Jump into a cold waterfall" maxlength="100"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Quest name (Romanian) <span style="color:var(--muted);font-size:9px">optional</span></label>
+      <input class="form-input" type="text" id="name-ro" placeholder="e.g. Sari într-o cascadă rece" maxlength="100"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description (English) *</label>
+      <textarea class="form-input" id="desc-en" placeholder="Describe it in 1-2 sentences. Be specific." rows="3" maxlength="300"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description (Romanian) <span style="color:var(--muted);font-size:9px">optional</span></label>
+      <textarea class="form-input" id="desc-ro" placeholder="Descrie în 1-2 propoziții." rows="3" maxlength="300"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select class="form-input" id="tag">
+        <option value="wild">wild</option>
+        <option value="adventure">adventure</option>
+        <option value="creative">creative</option>
+        <option value="food">food</option>
+        <option value="chaos">chaos</option>
+        <option value="sentimental">sentimental</option>
+        <option value="chill">chill</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Why should this be on the list?</label>
+      <textarea class="form-input" id="reason" placeholder="Convince Andrei. One sentence is enough." rows="2" maxlength="200"></textarea>
+    </div>
+    <div class="divider"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="submitQuest()">Send to Andrei's Inbox →</button>
+  </div>
+
+  <div id="success-msg" style="display:none;margin-top:2rem;text-align:center">
+    <div style="font-family:'DM Serif Display',serif;font-size:1.5rem;margin-bottom:.5rem">Submitted ✓</div>
+    <div style="font-size:12px;color:var(--muted)">Andrei will review your quest. If approved, it'll appear on the list.</div>
+    <a href="index.html" class="btn btn-ghost" style="margin-top:1.5rem;display:inline-flex">Back to the list</a>
+  </div>
+</div>
+
+<script>
+function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='show '+type;setTimeout(()=>t.className='',3500)}
+async function logout(){await sb.auth.signOut();window.location.href='login.html'}
+
+async function init(){
+  const user=await requireAuth();
+  if(!user) return;
+  if(user.email===ADMIN_EMAIL) document.getElementById('nav-admin').style.display='';
+}
+
+async function submitQuest(){
+  const user=await getUser();
+  const nameEn=document.getElementById('name-en').value.trim();
+  const nameRo=document.getElementById('name-ro').value.trim();
+  const descEn=document.getElementById('desc-en').value.trim();
+  const descRo=document.getElementById('desc-ro').value.trim();
+  const tag=document.getElementById('tag').value;
+  const reason=document.getElementById('reason').value.trim();
+  if(!nameEn||!descEn) return toast('English name and description are required.','error');
+  if(!reason) return toast('Add a short reason for your suggestion.','error');
+
+  const{error}=await sb.from('quest_suggestions').insert({
+    submitted_by:user.id,
+    submitted_by_email:user.email,
+    submitted_by_name:user.user_metadata?.display_name||user.email,
+    name_en:nameEn,name_ro:nameRo||null,
+    desc_en:descEn,desc_ro:descRo||null,
+    tag,reason,status:'pending'
+  });
+  if(error) return toast('Error: '+error.message,'error');
+  document.getElementById('the-form').style.display='none';
+  document.getElementById('success-msg').style.display='block';
+}
+
+init();
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.ctrlKey) submitQuest();
+});</script>
+</body>
+</html>

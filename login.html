@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Sidequests</title>
+<link rel="icon" href="icon.ico">  
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<style>
+  .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}
+  .auth-box{width:100%;max-width:420px}
+  .auth-logo{font-family:'DM Serif Display',serif;font-size:2rem;margin-bottom:2.5rem}
+  .auth-logo em{font-style:italic;color:var(--accent)}
+  .auth-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:2rem}
+  .auth-tab{font-size:11px;letter-spacing:.15em;text-transform:uppercase;padding:10px 0;margin-right:2rem;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s}
+  .auth-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .auth-form{display:none}
+  .auth-form.active{display:block}
+  .auth-footer{margin-top:1.5rem;font-size:11px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div class="auth-wrap">
+  <div class="auth-box fade-up">
+    <div class="auth-logo">Side<em>quests</em></div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchTab('login')">Sign In</div>
+      <div class="auth-tab" onclick="switchTab('register')">Create Account</div>
+    </div>
+
+    <div class="auth-form active" id="form-login">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="login-email" placeholder="you@example.com"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" id="login-pass" placeholder="••••••••"/>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem" onclick="login()">Sign In</button>
+    </div>
+
+    <div class="auth-form" id="form-register">
+      <div class="form-group">
+        <label class="form-label">Display Name</label>
+        <input class="form-input" type="text" id="reg-name" placeholder="Your name"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="reg-email" placeholder="you@example.com"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" id="reg-pass" placeholder="Min. 6 characters"/>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem" onclick="register()">Create Account</button>
+    </div>
+
+    <div class="auth-footer">Part of the group? Ask Andrei for the link.</div>
+  </div>
+</div>
+
+<script>
+(async()=>{ const u=await getUser(); if(u) window.location.href='index.html'; })();
+
+function switchTab(tab){
+  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(i===0)===(tab==='login')));
+  document.getElementById('form-login').classList.toggle('active',tab==='login');
+  document.getElementById('form-register').classList.toggle('active',tab==='register');
+}
+
+function toast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='show '+type;
+  setTimeout(()=>t.className='',3500);
+}
+
+async function login(){
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-pass').value;
+  if(!email||!pass) return toast('Fill in all fields.','error');
+  const{error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error) return toast(error.message,'error');
+  window.location.href='index.html';
+}
+
+async function register(){
+  const name=document.getElementById('reg-name').value.trim();
+  const email=document.getElementById('reg-email').value.trim();
+  const pass=document.getElementById('reg-pass').value;
+  if(!name||!email||!pass) return toast('Fill in all fields.','error');
+  if(pass.length<6) return toast('Password must be at least 6 characters.','error');
+  const{data,error}=await sb.auth.signUp({email,password:pass,options:{data:{display_name:name}}});
+  if(error) return toast(error.message,'error');
+  if(data.user){
+    await sb.from('profiles').upsert({id:data.user.id,display_name:name,email});
+  }
+  toast('Account created! Signing you in...','success');
+  setTimeout(()=>window.location.href='index.html',1500);
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    document.getElementById('form-login').classList.contains('active')?login():register();
+  }
+});
+</script>
+</body>
+</html>

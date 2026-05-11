@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sidequests</title>
+<link rel="icon" href="icon.ico">  
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<style>
+  .header-wrap{padding:4rem 0 2.5rem;border-bottom:1px solid var(--border);margin-bottom:3rem}
+  .header-inner{max-width:1100px;margin:0 auto;padding:0 2rem;display:flex;align-items:flex-end;justify-content:space-between;gap:2rem;flex-wrap:wrap}
+  .header-right{display:flex;flex-direction:column;align-items:flex-end;gap:1rem}
+  .stat-big{font-family:'DM Serif Display',serif;font-size:3rem;line-height:1}
+  .stat-lbl{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+
+  .prog-wrap{max-width:1100px;margin:0 auto 2.5rem;padding:0 2rem}
+  .prog-row{display:flex;justify-content:space-between;margin-bottom:8px}
+  .prog-lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .prog-pct{font-size:10px;color:var(--accent)}
+  .bar-track{height:1px;background:var(--border)}
+  .bar-fill{height:1px;background:var(--accent);transition:width .5s cubic-bezier(.4,0,.2,1);position:relative}
+  .bar-fill::after{content:'';position:absolute;right:0;top:-2px;width:5px;height:5px;background:var(--accent);border-radius:50%}
+
+  .filter-bar{max-width:1100px;margin:0 auto 1.5rem;padding:0 2rem;display:flex;gap:.5rem;flex-wrap:wrap}
+  .filter-btn{font-size:9px;letter-spacing:.15em;text-transform:uppercase;padding:5px 12px;border-radius:2px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;font-family:'DM Mono',monospace}
+  .filter-btn.active{border-color:var(--accent);color:var(--accent)}
+  .filter-btn:hover:not(.active){color:var(--text)}
+
+  .quest-grid{max-width:1100px;margin:0 auto;padding:0 2rem 6rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;background:var(--border);border:1px solid var(--border)}
+  .q-card{background:var(--bg);padding:1.75rem 1.5rem;cursor:pointer;position:relative;overflow:hidden;transition:background .2s}
+  .q-card::before{content:'';position:absolute;inset:0;background:var(--accent-dim);opacity:0;transition:opacity .2s}
+  .q-card:hover::before{opacity:1}
+  .q-card.done{background:var(--done)}
+  .q-card.done::before{display:none}
+  .q-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}
+  .q-num{font-size:10px;letter-spacing:.15em;color:var(--muted);padding-top:2px}
+  .q-card.done .q-num{color:var(--done-text)}
+  .check-ring{width:20px;height:20px;border-radius:50%;border:1px solid var(--muted);display:flex;align-items:center;justify-content:center;transition:all .25s;flex-shrink:0}
+  .q-card:hover .check-ring{border-color:var(--accent)}
+  .q-card.done .check-ring{background:var(--green);border-color:var(--green);box-shadow:0 0 12px var(--green-glow)}
+  .q-name{font-family:'DM Serif Display',serif;font-size:1.1rem;line-height:1.3;margin-bottom:.5rem;transition:color .2s}
+  .q-card.done .q-name{color:var(--done-text);text-decoration:line-through;text-decoration-color:var(--muted)}
+  .q-desc{font-size:11px;line-height:1.7;color:var(--muted)}
+  .q-card.done .q-desc{color:var(--done-text)}
+  .q-tag{display:inline-block;margin-top:1rem;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);border:1px solid var(--border);padding:3px 8px;border-radius:2px}
+  .q-card.done .q-tag{opacity:.3}
+
+  .loading{max-width:1100px;margin:0 auto;padding:3rem 2rem;color:var(--muted);font-size:12px;letter-spacing:.1em}
+
+  @media(max-width:600px){.quest-grid{grid-template-columns:1fr}.header-right{align-items:flex-start}.header-inner{flex-direction:column}}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div id="imp-banner"></div>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="index.html">Side<em>quests</em></a>
+    <div class="nav-links">
+      <a class="nav-link active" href="index.html">List</a>
+      <a class="nav-link" href="submit.html">Suggest</a>
+      <a class="nav-link" href="admin.html" id="nav-admin" style="display:none">Admin ⚙</a>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+</nav>
+
+<div class="header-wrap">
+  <div class="header-inner">
+    <div>
+      <p class="page-eyebrow" id="eyebrow">Summer 2025 · Group of 6</p>
+      <h1 style="font-family:'DM Serif Display',serif;font-size:clamp(2.5rem,5vw,4rem);font-weight:400;line-height:1.05;letter-spacing:-.02em">
+        Side<em style="font-style:italic;color:var(--accent)">quests</em><br>
+        <span id="title-sub">to remember.</span>
+      </h1>
+    </div>
+    <div class="header-right">
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
+        <div class="lang-divider"></div>
+        <button class="lang-btn" id="btn-ro" onclick="setLang('ro')">RO</button>
+      </div>
+      <div>
+        <div class="stat-big" id="done-count">0</div>
+        <div class="stat-lbl" id="stat-lbl">complete</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="prog-wrap">
+  <div class="prog-row">
+    <span class="prog-lbl" id="prog-lbl">Summer progress</span>
+    <span class="prog-pct" id="pct">0%</span>
+  </div>
+  <div class="bar-track"><div class="bar-fill" id="bar" style="width:0%"></div></div>
+</div>
+
+<div class="filter-bar" id="filter-bar"></div>
+<div id="loading" class="loading">Loading quests...</div>
+<div class="quest-grid" id="quest-grid" style="display:none"></div>
+
+<script>
+let lang='en', currentUser=null, viewAsUser=null, userProgress={}, allQuests=[], activeFilter='all';
+const inFlight = new Set(); // quest IDs currently being saved
+
+const T={
+  en:{eyebrow:'Summer 2025 · Group of 6',sub:'to remember.',stat:'complete',prog:'Summer progress',all:'All'},
+  ro:{eyebrow:'Vara 2025 · Grup de 6',sub:'de neuitat.',stat:'bifate',prog:'Progres de vară',all:'Toate'}
+};
+
+function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='show '+type;setTimeout(()=>t.className='',3000)}
+async function logout(){await sb.auth.signOut();window.location.href='login.html'}
+
+function setLang(l){
+  lang=l;
+  document.getElementById('btn-en').classList.toggle('active',l==='en');
+  document.getElementById('btn-ro').classList.toggle('active',l==='ro');
+  const u=T[l];
+  document.getElementById('eyebrow').textContent=u.eyebrow;
+  document.getElementById('title-sub').textContent=u.sub;
+  document.getElementById('prog-lbl').textContent=u.prog;
+  renderFilters(); renderGrid(); updateStats();
+}
+
+async function init(){
+  currentUser=await requireAuth();
+  if(!currentUser) return;
+  if(currentUser.email===ADMIN_EMAIL) document.getElementById('nav-admin').style.display='';
+
+  // Impersonation
+  const imp=sessionStorage.getItem('viewAs');
+  if(imp && currentUser.email===ADMIN_EMAIL){
+    viewAsUser=JSON.parse(imp);
+    const b=document.getElementById('imp-banner');
+    b.style.display='block';
+    b.innerHTML=`👁 Viewing as <strong>${viewAsUser.display_name||viewAsUser.email}</strong> &nbsp;·&nbsp; <a href="admin.html" style="color:var(--accent);text-decoration:none" onclick="sessionStorage.removeItem('viewAs')">Exit →</a>`;
+  }
+
+  await loadQuests((viewAsUser||currentUser).id);
+}
+
+async function loadQuests(userId){
+  const{data:quests,error}=await sb.from('quests').select('*').eq('approved',true).order('created_at',{ascending:true});
+  if(error){document.getElementById('loading').textContent='Error loading quests: '+error.message;return}
+  allQuests=quests||[];
+
+  const{data:progress}=await sb.from('user_progress').select('quest_id,completed').eq('user_id',userId);
+  userProgress={};
+  (progress||[]).forEach(p=>userProgress[p.quest_id]=p.completed);
+
+  document.getElementById('loading').style.display='none';
+  document.getElementById('quest-grid').style.display='';
+  renderFilters(); renderGrid(); updateStats();
+}
+
+function renderFilters(){
+  const tags=['all',...new Set(allQuests.map(q=>q.tag).filter(Boolean))];
+  document.getElementById('filter-bar').innerHTML=tags.map(tag=>`
+    <button class="filter-btn ${activeFilter===tag?'active':''}" onclick="setFilter('${tag}')">
+      ${tag==='all'?T[lang].all:tag}
+    </button>`).join('');
+}
+
+function setFilter(tag){activeFilter=tag;renderFilters();renderGrid()}
+
+function renderGrid(){
+  const filtered=activeFilter==='all'?allQuests:allQuests.filter(q=>q.tag===activeFilter);
+  const grid=document.getElementById('quest-grid');
+  if(!filtered.length){grid.innerHTML=`<div style="padding:3rem;color:var(--muted);font-size:12px;grid-column:1/-1">No quests found.</div>`;return}
+  const checkSvg=`<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  grid.innerHTML=filtered.map((q,i)=>{
+    const done=userProgress[q.id]===true;
+    const name=esc(lang==='ro'&&q.name_ro?q.name_ro:q.name_en);
+    const desc=esc(lang==='ro'&&q.desc_ro?q.desc_ro:q.desc_en);
+    return `<div class="q-card ${done?'done':''}" onclick="toggleQuest('${esc(q.id)}')" style="animation:fadeUp .4s ${i*.02}s ease both">
+      <div class="q-top">
+        <span class="q-num">${String(i+1).padStart(2,'0')}</span>
+        <div class="check-ring">${done?checkSvg:''}</div>
+      </div>
+      <div class="q-name">${name}</div>
+      <div class="q-desc">${desc}</div>
+      <span class="q-tag">${esc(q.tag)}</span>
+    </div>`;
+  }).join('');
+}
+
+function updateStats(){
+  const done=Object.values(userProgress).filter(Boolean).length;
+  const total=allQuests.length;
+  document.getElementById('done-count').textContent=done;
+  document.getElementById('stat-lbl').textContent=`${T[lang].stat} of ${total}`;
+  document.getElementById('pct').textContent=total?Math.round(done/total*100)+'%':'0%';
+  document.getElementById('bar').style.width=total?(done/total*100)+'%':'0%';
+}
+
+async function toggleQuest(questId){
+  if(viewAsUser){toast('Exit view mode to interact.');return}
+  if(inFlight.has(questId)) return; // prevent double-tap desync
+  inFlight.add(questId);
+  const curr=userProgress[questId]||false;
+  userProgress[questId]=!curr;
+  renderGrid(); updateStats();
+  const{error}=await sb.from('user_progress').upsert(
+    {user_id:currentUser.id,quest_id:questId,completed:!curr},
+    {onConflict:'user_id,quest_id'}
+  );
+  inFlight.delete(questId);
+  if(error){userProgress[questId]=curr;renderGrid();updateStats();toast('Could not save.','error')}
+}
+
+init();
+</script>
+</body>
+</html>
