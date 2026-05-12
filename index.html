@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sidequests</title>
-<link rel="icon" href="icon.ico">  
+<link rel="icon" type="image/png" href="icon.ico">
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 <script src="supabase.js"></script>
@@ -49,7 +49,13 @@
 
   .loading{max-width:1100px;margin:0 auto;padding:3rem 2rem;color:var(--muted);font-size:12px;letter-spacing:.1em}
 
-  @media(max-width:600px){.quest-grid{grid-template-columns:1fr}.header-right{align-items:flex-start}.header-inner{flex-direction:column}}
+  @media(max-width:600px){
+    .quest-grid{grid-template-columns:1fr}
+    .header-right{align-items:flex-start}
+    .header-inner{flex-direction:column}
+    /* Show all nav links on the main quest page — users need Suggest */
+    .nav-links .nav-link{display:inline-flex !important}
+  }
 </style>
 </head>
 <body>
@@ -105,14 +111,12 @@
 
 <script>
 let lang='en', currentUser=null, viewAsUser=null, userProgress={}, allQuests=[], activeFilter='all';
-const inFlight = new Set(); // quest IDs currently being saved
 
 const T={
   en:{eyebrow:'Summer 2025 · Group of 6',sub:'to remember.',stat:'complete',prog:'Summer progress',all:'All'},
   ro:{eyebrow:'Vara 2025 · Grup de 6',sub:'de neuitat.',stat:'bifate',prog:'Progres de vară',all:'Toate'}
 };
 
-function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='show '+type;setTimeout(()=>t.className='',3000)}
 async function logout(){await sb.auth.signOut();window.location.href='login.html'}
 
 function setLang(l){
@@ -131,16 +135,28 @@ async function init(){
   if(!currentUser) return;
   if(currentUser.email===ADMIN_EMAIL) document.getElementById('nav-admin').style.display='';
 
-  // Impersonation
+  // Impersonation banner
   const imp=sessionStorage.getItem('viewAs');
   if(imp && currentUser.email===ADMIN_EMAIL){
     viewAsUser=JSON.parse(imp);
     const b=document.getElementById('imp-banner');
     b.style.display='block';
-    b.innerHTML=`👁 Viewing as <strong>${viewAsUser.display_name||viewAsUser.email}</strong> &nbsp;·&nbsp; <a href="admin.html" style="color:var(--accent);text-decoration:none" onclick="sessionStorage.removeItem('viewAs')">Exit →</a>`;
+    b.innerHTML=`👁 Viewing as <strong>${esc(viewAsUser.display_name||viewAsUser.email)}</strong> &nbsp;·&nbsp; <a href="admin.html" style="color:var(--accent);text-decoration:none" onclick="sessionStorage.removeItem('viewAs')">Exit →</a>`;
   }
 
-  await loadQuests((viewAsUser||currentUser).id);
+  await Promise.all([
+    loadQuests((viewAsUser||currentUser).id),
+    loadAnnouncements()
+  ]);
+}
+
+async function loadAnnouncements(){
+  const{data}=await sb.from('announcements').select('*').order('created_at',{ascending:false}).limit(3);
+  if(!data?.length) return;
+  const banner=document.createElement('div');
+  banner.style.cssText='background:rgba(200,184,154,.06);border-bottom:1px solid rgba(200,184,154,.15);padding:10px 2rem;font-size:12px;color:var(--text);line-height:1.6';
+  banner.innerHTML=data.map(a=>`<div style="max-width:1100px;margin:0 auto;display:flex;gap:.75rem;align-items:baseline"><span style="color:var(--accent);font-size:9px;letter-spacing:.15em;text-transform:uppercase;flex-shrink:0">📣 ${new Date(a.created_at).toLocaleDateString()}</span>${esc(a.message)}</div>`).join('<div style="height:4px"></div>');
+  document.querySelector('nav').after(banner);
 }
 
 async function loadQuests(userId){
@@ -160,8 +176,8 @@ async function loadQuests(userId){
 function renderFilters(){
   const tags=['all',...new Set(allQuests.map(q=>q.tag).filter(Boolean))];
   document.getElementById('filter-bar').innerHTML=tags.map(tag=>`
-    <button class="filter-btn ${activeFilter===tag?'active':''}" onclick="setFilter('${tag}')">
-      ${tag==='all'?T[lang].all:tag}
+    <button class="filter-btn ${activeFilter===tag?'active':''}" onclick="setFilter('${esc(tag)}')">
+      ${tag==='all'?T[lang].all:esc(tag)}
     </button>`).join('');
 }
 
@@ -171,19 +187,18 @@ function renderGrid(){
   const filtered=activeFilter==='all'?allQuests:allQuests.filter(q=>q.tag===activeFilter);
   const grid=document.getElementById('quest-grid');
   if(!filtered.length){grid.innerHTML=`<div style="padding:3rem;color:var(--muted);font-size:12px;grid-column:1/-1">No quests found.</div>`;return}
-  const checkSvg=`<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   grid.innerHTML=filtered.map((q,i)=>{
     const done=userProgress[q.id]===true;
-    const name=esc(lang==='ro'&&q.name_ro?q.name_ro:q.name_en);
-    const desc=esc(lang==='ro'&&q.desc_ro?q.desc_ro:q.desc_en);
+    const name=lang==='ro'&&q.name_ro?q.name_ro:q.name_en;
+    const desc=lang==='ro'&&q.desc_ro?q.desc_ro:q.desc_en;
     return `<div class="q-card ${done?'done':''}" onclick="toggleQuest('${esc(q.id)}')" style="animation:fadeUp .4s ${i*.02}s ease both">
       <div class="q-top">
         <span class="q-num">${String(i+1).padStart(2,'0')}</span>
-        <div class="check-ring">${done?checkSvg:''}</div>
+        <div class="check-ring">${done?`<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}</div>
       </div>
-      <div class="q-name">${name}</div>
-      <div class="q-desc">${desc}</div>
-      <span class="q-tag">${esc(q.tag)}</span>
+      <div class="q-name">${esc(name)}</div>
+      <div class="q-desc">${esc(desc)}</div>
+      <span class="q-tag">${esc(q.tag||'')}</span>
     </div>`;
   }).join('');
 }
@@ -199,8 +214,6 @@ function updateStats(){
 
 async function toggleQuest(questId){
   if(viewAsUser){toast('Exit view mode to interact.');return}
-  if(inFlight.has(questId)) return; // prevent double-tap desync
-  inFlight.add(questId);
   const curr=userProgress[questId]||false;
   userProgress[questId]=!curr;
   renderGrid(); updateStats();
@@ -208,7 +221,6 @@ async function toggleQuest(questId){
     {user_id:currentUser.id,quest_id:questId,completed:!curr},
     {onConflict:'user_id,quest_id'}
   );
-  inFlight.delete(questId);
   if(error){userProgress[questId]=curr;renderGrid();updateStats();toast('Could not save.','error')}
 }
 
