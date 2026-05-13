@@ -7,9 +7,9 @@
   --border:rgba(255,255,255,0.07);--border-h:rgba(255,255,255,0.15);
   --text:#f0ece3;--muted:#5a5a5a;
   --accent:#c8b89a;--accent-dim:rgba(200,184,154,0.12);
-  --done:#0f1410;--done-text:#3a5040;
+  --done:#161616;--done-text:#333;
   --green:#4a7c5f;--green-dim:rgba(74,124,95,0.15);--green-glow:rgba(74,124,95,0.3);
-  --red:#c0605a;--red-dim:rgba(124,74,74,0.15);
+  --red:#7c4a4a;--red-dim:rgba(124,74,74,0.15);
   --yellow-dim:rgba(124,110,74,0.15);
 }
 
@@ -46,7 +46,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(10,10,10,.92);backdrop-fil
 .btn-danger:hover{background:var(--red-dim)}
 .btn-success{background:transparent;color:var(--green);border:1px solid rgba(74,124,95,.3)}
 .btn-success:hover{background:var(--green-dim)}
-.btn:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
 .btn-sm{padding:5px 12px;font-size:9px}
 
 /* LANG TOGGLE */
@@ -76,7 +75,7 @@ select.form-input{cursor:pointer}
 #toast{position:fixed;bottom:2rem;right:2rem;z-index:9998;font-size:12px;padding:12px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);transform:translateY(100px);opacity:0;transition:all .3s;pointer-events:none}
 #toast.show{transform:translateY(0);opacity:1}
 #toast.success{border-color:var(--green);color:var(--green)}
-#toast.error{border-color:var(--red);color:var(--red)}
+#toast.error{border-color:var(--red);color:#e08080}
 
 /* IMPERSONATE BANNER */
 #imp-banner{display:none;background:rgba(124,110,74,.2);border-bottom:1px solid var(--accent);padding:10px 2rem;text-align:center;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);position:sticky;top:56px;z-index:99}

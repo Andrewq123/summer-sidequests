@@ -1,96 +1,131 @@
-# Summer Sidequests
+# 🏕 Sidequests — Setup Guide for Andrei
 
-A summer bucket-list app for a group of friends. Users log in, check off quests, and track group progress together. Built with vanilla HTML/CSS/JS and Supabase.
+## What you're getting
+- **Login / Register** page
+- **Main quest list** with EN/RO toggle, per-user progress saved to database
+- **Submit a quest** page (sends to your inbox for approval)
+- **Admin dashboard** with:
+  - Stats (users, quests, completions, pending)
+  - 📬 Inbox — approve or reject user suggestions
+  - 📋 Quest list — add manually, edit, delete
+  - 👥 Users — see all users + their progress
+  - 👁 "View as" — see exactly what any user sees
 
-## Setup
+---
 
-### 1. Supabase
+## Step 1 — Create your Supabase project (5 min)
 
-1. Create a project at [supabase.com](https://supabase.com)
-2. Go to **SQL Editor** and run the full contents of `setup.sql`
-3. Copy your project URL and anon key from **Project Settings → API**
-4. Paste them into `supabase.js`:
+1. Go to **https://supabase.com** and sign up (free)
+2. Click **"New project"**
+3. Name it `sidequests`, pick a region close to Romania, set a password
+4. Wait ~2 minutes for it to start
+
+---
+
+## Step 2 — Run the database SQL
+
+1. In your Supabase project, click **SQL Editor** in the left sidebar
+2. Click **New query**
+3. Open the `setup.sql` file from this folder
+4. Copy everything and paste it into the SQL editor
+5. Click **Run** (green button)
+6. You should see "Success" — this creates all tables and inserts all 30 quests
+
+---
+
+## Step 3 — Get your API keys
+
+1. In Supabase, go to **Settings → API**
+2. Copy:
+   - **Project URL** (looks like `https://abcdefgh.supabase.co`)
+   - **anon public** key (long string starting with `eyJ...`)
+
+---
+
+## Step 4 — Add your keys to the site
+
+Open `js/supabase.js` and replace:
 
 ```js
-const SUPABASE_URL = 'https://your-project.supabase.co';
-const SUPABASE_ANON_KEY = 'your-anon-key';
-const ADMIN_EMAIL = 'your@email.com'; // must match setup.sql RLS policies
+const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';
+const ADMIN_EMAIL = 'andrei@youremail.com'; // ← your actual email
 ```
 
-### 2. Deploy
-
-Drop all files into any static host — GitHub Pages, Netlify, Vercel, Cloudflare Pages. No build step needed.
-
----
-
-## Pages
-
-| File | Route | Description |
-|---|---|---|
-| `login.html` | `/login.html` | Sign in / create account |
-| `index.html` | `/index.html` | Quest list, leaderboard, filters |
-| `submit.html` | `/submit.html` | Suggest a quest + view your submissions |
-| `admin.html` | `/admin.html` | Full admin dashboard (admin email only) |
+**Important:** The `ADMIN_EMAIL` must match the email you use to sign up.  
+The SQL also has this email in 2 places — search for `andrei@youremail.com` in `setup.sql` and replace it too (even if you already ran it, update the policies).
 
 ---
 
-## Features
+## Step 5 — Enable email auth in Supabase
 
-### For users
-- EN ↔ RO language toggle
-- Tag-based filtering (wild, adventure, creative, food, chaos, sentimental, chill)
-- Sort by: default, A→Z, done first/last, most popular
-- Hide completed quests toggle
-- 🎲 "I'm feeling lucky" — random uncompleted quest picker
-- Quest detail modal — see who else completed it, mark done from modal
-- Group leaderboard strip (top 5 by completions)
-- Completion date shown on finished quest cards
-- Announcement banner (admin-posted messages)
-- Suggest quests + view your submission history with status
-
-### For admin
-- Live KPI stats: users, active quests, pending inbox, completions, top player, hottest quest
-- Analytics tab:
-  - Top 10 quests by completion (bar chart with medals)
-  - Completions by category (canvas donut chart)
-  - Per-user progress breakdown
-  - All quests ranked by completion rate
-  - Completions over time (14-day bar chart)
-  - Live activity feed
-- Inbox: approve/reject suggestions, bulk reject, filter by status
-- Quests: search, add, edit, delete, toggle visibility (hide without deleting)
-- Users: search, view progress, 👁 view-as impersonation, ↺ reset progress
-- Announcements: post group-wide messages visible on the quest list
-- CSV export of all user data
+1. Go to **Authentication → Providers**
+2. Make sure **Email** is enabled
+3. Under **Authentication → Settings**, you can turn off "Confirm email" for easier testing
 
 ---
 
-## Database Schema
+## Step 6 — Deploy to GitHub Pages
 
-```
-profiles         id, display_name, email, created_at
-quests           id, name_en, name_ro, desc_en, desc_ro, tag, approved, created_at
-user_progress    id, user_id, quest_id, completed, completed_at
-quest_suggestions id, submitted_by, name_en, name_ro, desc_en, desc_ro, tag, reason, status, created_at
-announcements    id, message, created_at
-```
-
-RLS is enabled on all tables. Admin access is gated by email in JWT claims.
-
----
-
-## Running the SQL sections
-
-The `setup.sql` file is divided into numbered sections. If your DB is already live:
-
-- **Section 7** (Announcements table) — run if you set up before this was added
-- **Section 8** (10 new quests) — run to add the extra quests
-- **Section 9** (MDL patch) — run to fix RON → MDL in the flea market quest
+1. Create a repo on GitHub called `summer-sidequests`
+2. Upload all files keeping the folder structure:
+   ```
+   index.html
+   login.html
+   submit.html
+   admin.html
+   setup.sql        ← optional, don't need to upload
+   README.md        ← optional
+   css/style.css
+   js/supabase.js
+   ```
+3. Go to repo **Settings → Pages → Deploy from branch → main → / (root)**
+4. Your site is live at: `https://andrewq123.github.io/summer-sidequests`
 
 ---
 
-## Notes
+## Step 7 — Sign up as Andrei
 
-- The anon key in `supabase.js` is safe to commit as long as RLS is properly configured
-- Admin email must match exactly in both `supabase.js` and the RLS policies in `setup.sql`
-- If users sign up before the profile trigger exists, run the backfill query in Section 6 of `setup.sql`
+1. Go to your live site → Login page
+2. Click **Create Account**
+3. Use the exact email you put in `ADMIN_EMAIL`
+4. Sign in — you'll see an **Admin ⚙** link in the nav
+
+---
+
+## How the Admin features work
+
+### 📬 Inbox
+When a friend submits a quest idea, it appears here with **Approve** and **Reject** buttons.  
+Approving automatically adds it to the live quest list.
+
+### 👁 View as user
+In the **Users** tab, click **👁 View as** next to any user.  
+You'll be taken to the main page with a yellow banner showing whose view you're in.  
+You'll see exactly what they see — their checkmarks, their progress.  
+Click **Exit view →** in the banner to go back to admin.
+
+### ➕ Add quest manually
+In the **Quest List** tab, click **+ Add Quest Manually**.  
+Fill in English (required) and Romanian (optional) versions.  
+It goes live immediately — no approval needed since you're the admin.
+
+---
+
+## Sharing with friends
+
+Just send them the link: `https://andrewq123.github.io/summer-sidequests`  
+They create an account, their progress is saved per-user in the database.  
+Each person has their own checkmarks — private to them.
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| "Error loading quests" | Check your Supabase URL and key in `js/supabase.js` |
+| Admin link not showing | Make sure your email matches `ADMIN_EMAIL` exactly |
+| Can't sign up | Check Supabase → Auth → Settings → disable email confirmation |
+| Quests not showing | Make sure you ran `setup.sql` successfully |
+| RLS errors in console | Re-run the policy section of `setup.sql` |
