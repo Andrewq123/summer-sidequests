@@ -341,23 +341,28 @@ async function init(){
 }
 
 async function loadAll(){
-  const [
-    {data:quests}, {data:profiles}, {data:progress},
-    {data:suggestions}, {data:announcements}
-  ] = await Promise.all([
-    sb.from('quests').select('*').order('created_at',{ascending:true}),
-    sb.from('profiles').select('*').order('created_at',{ascending:false}),
-    sb.from('user_progress').select('*'),
-    sb.from('quest_suggestions').select('*').order('created_at',{ascending:false}),
-    sb.from('announcements').select('*').order('created_at',{ascending:false})
-      .catch(()=>({data:[]})), // graceful if table doesn't exist yet
+  const safe = async (query, label) => {
+    const res = await query;
+    if(res.error) console.warn('[admin] '+label+' error:', res.error.message, res.error);
+    else console.log('[admin] '+label+': '+(res.data?.length??0)+' rows');
+    return res.data || [];
+  };
+
+  const [quests, profiles, progress, suggestions, announcements] = await Promise.all([
+    safe(sb.from('quests').select('*').order('created_at',{ascending:true}), 'quests'),
+    safe(sb.from('profiles').select('*').order('created_at',{ascending:false}), 'profiles'),
+    safe(sb.from('user_progress').select('*'), 'user_progress'),
+    safe(sb.from('quest_suggestions').select('*').order('created_at',{ascending:false}), 'suggestions'),
+    safe(sb.from('announcements').select('*').order('created_at',{ascending:false}), 'announcements'),
   ]);
 
-  allQuestsAdmin   = quests       || [];
-  allUsers         = profiles     || [];
-  allProgress      = progress     || [];
-  allSuggestions   = suggestions  || [];
-  allAnnouncements = announcements|| [];
+  allQuestsAdmin   = quests;
+  allUsers         = profiles;
+  allProgress      = progress;
+  allSuggestions   = suggestions;
+  allAnnouncements = announcements;
+
+  console.log('[admin] state:', {quests:allQuestsAdmin.length, users:allUsers.length, progress:allProgress.length});
 
   renderStats();
   renderAnalytics();
