@@ -185,8 +185,14 @@ canvas{display:block;width:100%!important}
       </div>
     </div>
 
+      <!-- Completion timeline -->
+      <div class="chart-box chart-full" style="margin-top:1px">
+        <div class="chart-title">Completions Over Time (last 14 days)</div>
+        <div id="chart-timeline" style="display:flex;align-items:flex-end;gap:3px;height:80px"></div>
+      </div>
+
     <!-- Activity feed -->
-    <div class="section-header">
+    <div class="section-header" style="margin-top:2rem">
       <div class="section-title" style="border:none;margin:0">Recent Activity</div>
     </div>
     <div id="activity-feed"></div>
@@ -366,6 +372,7 @@ async function loadAll(){
 
   renderStats();
   renderAnalytics();
+  renderTimeline();
   renderInbox();
   renderQuests();
   renderUsers();
@@ -513,6 +520,7 @@ function renderAnalytics(){
       <span class="bar-val">${item.count}/${maxAll}</span>
     </div>`).join('') || '<div class="empty">No quests yet.</div>';
 
+  renderTimeline();
   // ── 5. Activity feed ─────────────────────────────────────
   // Build recent completions (completed_at may be null; fall back to created_at)
   const recentC = allProgress
@@ -650,6 +658,9 @@ function renderQuests(){
         </div>
       </div>
       <div class="quest-manage-actions">
+        <button class="btn btn-ghost btn-sm" onclick="toggleQuestVisibility('${esc(q.id)}',${q.approved},this)" style="color:${q.approved?'var(--green)':'var(--muted)'}">
+          ${q.approved?'✓ Visible':'○ Hidden'}
+        </button>
         <button class="btn btn-ghost btn-sm" onclick="openEdit('${esc(q.id)}')">Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteQuest('${esc(q.id)}',this)">Delete</button>
       </div>
@@ -739,11 +750,14 @@ function renderUsers(){
         <div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.round(u.count/total*100)}%"></div></div>
       </div>
       <div class="user-pct">${Math.round(u.count/total*100)}%</div>
-      <button class="btn btn-ghost btn-sm" onclick="viewAsUser('${esc(u.id)}','${esc((u.display_name||u.email).replace(/'/g,"\\'"))}','${esc(u.email)}')">👁 View as</button>
-    </div>`).join('') || '<div class="empty">No users found.</div>';
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="impersonateUser('${esc(u.id)}','${esc((u.display_name||u.email).replace(/'/g,"\\'")}','${esc(u.email)}')">👁 View</button>
+        <button class="btn btn-danger btn-sm" onclick="resetUserProgress('${esc(u.id)}','${esc((u.display_name||u.email).replace(/'/g,"\\'")}',this)">↺ Reset</button>
+      </div>
+    </div>\`).join('') || '<div class="empty">No users found.</div>';
 }
 
-function viewAsUser(id,name,email){
+function impersonateUser(id,name,email){
   sessionStorage.setItem('viewAs',JSON.stringify({id,display_name:name,email}));
   window.location.href='index.html';
 }
@@ -812,6 +826,66 @@ function exportCSV(){
   a.click();
   toast('CSV downloaded.','success');
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Quest visibility toggle
+// ─────────────────────────────────────────────────────────────────────────────
+async function toggleQuestVisibility(id, currentlyApproved, btn){
+  await withLoading(btn, async()=>{
+    const{error}=await sb.from('quests').update({approved:!currentlyApproved}).eq('id',id);
+    if(error) return toast('Error: '+error.message,'error');
+    toast(currentlyApproved?'Quest hidden from users.':'Quest is now visible!', currentlyApproved?'':'success');
+    await loadAll();
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reset user progress
+// ─────────────────────────────────────────────────────────────────────────────
+async function resetUserProgress(userId, name, btn){
+  if(!confirm(`Reset ALL progress for ${name}? This cannot be undone.`)) return;
+  await withLoading(btn, async()=>{
+    const{error}=await sb.from('user_progress').delete().eq('user_id',userId);
+    if(error) return toast('Error: '+error.message,'error');
+    toast(`Progress reset for ${name}.`,'');
+    await loadAll();
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Completion timeline
+// ─────────────────────────────────────────────────────────────────────────────
+function renderTimeline(){
+  const el=document.getElementById('chart-timeline');
+  if(!el) return;
+  const days=14;
+  const counts={};
+  const now=new Date();
+  for(let i=days-1;i>=0;i--){
+    const d=new Date(now);d.setDate(d.getDate()-i);
+    const key=d.toISOString().slice(0,10);
+    counts[key]=0;
+  }
+  allProgress.filter(p=>p.completed&&p.completed_at).forEach(p=>{
+    const key=p.completed_at.slice(0,10);
+    if(counts[key]!==undefined) counts[key]++;
+  });
+  const vals=Object.values(counts);
+  const max=Math.max(...vals,1);
+  const keys=Object.keys(counts);
+  el.innerHTML=keys.map((k,i)=>{
+    const v=counts[k];
+    const h=Math.max(4,Math.round(v/max*72));
+    const isToday=k===new Date().toISOString().slice(0,10);
+    const label=new Date(k+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:default" title="${label}: ${v} completions">
+      <div style="font-size:9px;color:${v>0?'var(--accent)':'transparent'}">${v||''}</div>
+      <div style="width:100%;height:${h}px;background:${isToday?'var(--accent)':'rgba(200,184,154,0.25)'};border-radius:1px 1px 0 0;transition:height .4s"></div>
+      <div style="font-size:8px;color:var(--muted);white-space:nowrap;writing-mode:vertical-lr;transform:rotate(180deg);height:28px">${i%3===0?label.split(' ')[0]:''}</div>
+    </div>`;
+  }).join('');
+}
+
 
 init();
 </script>
